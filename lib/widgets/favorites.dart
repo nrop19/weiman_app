@@ -174,7 +174,7 @@ class FBookItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       onTap: () => onTap(book),
-      leading: Hero(tag: 'fb ${book.aid}', child: Image.network(book.avatar)),
+      leading: Hero(tag: 'fb ${book.aid}', child: Image(image:NetworkImageSSL(book.avatar))),
       title: Text(book.name, style: Theme.of(context).textTheme.body1),
       subtitle: RichText(text: subtitle),
     );

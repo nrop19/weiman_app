@@ -8,7 +8,6 @@ import 'package:async/async.dart';
 import 'package:draggable_container/draggable_container.dart';
 import 'package:dynamic_theme/dynamic_theme.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
-import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_analytics/observer.dart';
 import 'package:flutter/material.dart' hide NestedScrollView;
@@ -26,6 +25,7 @@ import 'package:pull_to_refresh_notification/pull_to_refresh_notification.dart'
     hide CircularProgressIndicator;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'classes/networkImageSSL.dart';
 
 part './activities/book.dart';
 
@@ -85,15 +85,6 @@ void main() async {
   UserAgentClient.init(
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36');
   runApp(Main(packageInfo: packageInfo));
-//  runApp(MaterialApp(
-//    title: '微漫',
-//    theme: ThemeData.light(),
-//    darkTheme: ThemeData.dark(),
-//    themeMode: ThemeMode.system,
-//    debugShowCheckedModeBanner: false,
-//    navigatorObservers: [observer],
-//    home: ActivityHome(packageInfo),
-//  ));
 }
 
 class Main extends StatefulWidget {
@@ -107,23 +98,9 @@ class Main extends StatefulWidget {
 
 class _Main extends State<Main> with WidgetsBindingObserver {
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return DynamicTheme(
-        defaultBrightness: ThemeMode.system == ThemeMode.light
-            ? Brightness.light
-            : Brightness.dark,
+        defaultBrightness: Brightness.dark,
         data: (brightness) => new ThemeData(
               brightness: brightness,
             ),
@@ -147,11 +124,5 @@ class _Main extends State<Main> with WidgetsBindingObserver {
 //      navigatorObservers: [observer],
 //      home: ActivityHome(widget.packageInfo),
 //    );
-  }
-
-  @override
-  void didChangePlatformBrightness() {
-    print('改变亮度');
-    setState(() {});
   }
 }

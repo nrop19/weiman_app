@@ -1,7 +1,6 @@
 part of '../main.dart';
 
 const domain = '';
-final host = Uri.parse(domain).host;
 
 class UserAgentClient extends http.BaseClient {
   final String userAgent;

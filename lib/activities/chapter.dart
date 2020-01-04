@@ -117,6 +117,12 @@ class _ChapterDrawer extends State<ChapterDrawer> {
     });
   }
 
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   void updateRead() {
     final readChapter = widget.book.chapters
         .firstWhere((chapter) => widget.book.history?.cid == chapter.cid);
@@ -132,12 +138,6 @@ class _ChapterDrawer extends State<ChapterDrawer> {
       duration: Duration(milliseconds: 200),
       curve: Curves.linear,
     );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
   }
 
   @override
@@ -183,6 +183,9 @@ class ChapterContentView extends StatefulWidget {
 class _ChapterContentView extends State<ChapterContentView> {
   final GlobalKey<PullToRefreshNotificationState> _refresh = GlobalKey();
   final List<String> images = [];
+  TextStyle _style = TextStyle(color: Colors.white);
+  BoxDecoration _decoration =
+      BoxDecoration(color: Colors.black.withOpacity(0.4));
 
   int chapterIndex = -1;
   bool hasNextChapter = false;
@@ -223,6 +226,30 @@ class _ChapterContentView extends State<ChapterContentView> {
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> list = [];
+    for (var i = 0; i < images.length; i++) {
+      list.add(SliverStickyHeader(
+        overlapsContent: true,
+        header: SafeArea(
+          top: true,
+          bottom: false,
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(5),
+                decoration: _decoration,
+                child: Text(
+                  '${i + 1} / ${images.length}',
+                  style: _style,
+                ),
+              ),
+            ],
+          ),
+        ),
+        sliver:
+            SliverToBoxAdapter(child: Image(image: NetworkImageSSL(images[i]))),
+      ));
+    }
     return PullToRefreshNotification(
       key: _refresh,
       onRefresh: fetchImages,
@@ -236,16 +263,14 @@ class _ChapterContentView extends State<ChapterContentView> {
             floating: true,
             actions: widget.actions,
           ),
-          PullToRefreshContainer((info) => SliverPullToRefreshHeader(
-                info: info,
-                onTap: () => _refresh.currentState
-                    .show(notificationDragOffset: kToolbarHeight * 2),
-              )),
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-                (ctx, i) => Image.network(images[i]),
-                childCount: images.length),
+          PullToRefreshContainer(
+            (info) => SliverPullToRefreshHeader(
+              info: info,
+              onTap: () => _refresh.currentState
+                  .show(notificationDragOffset: kToolbarHeight * 2),
+            ),
           ),
+          ...list,
         ],
       ),
     );

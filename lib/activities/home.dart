@@ -25,6 +25,7 @@ class HomeState extends State<ActivityHome> {
 
     /// 提前检查一次藏书的更新情况
     SchedulerBinding.instance.addPostFrameCallback((_) async {
+      autoSwitchTheme();
       _FavoriteList.getBooks();
       await _FavoriteList.checkNews();
       final updated = _FavoriteList.hasNews.values
@@ -37,6 +38,14 @@ class HomeState extends State<ActivityHome> {
           backgroundColor: Colors.black.withOpacity(0.5),
         );
     });
+  }
+
+  void autoSwitchTheme() async {
+    final isDark = await DynamicTheme.of(context).loadBrightness();
+    final nowIsDark = DynamicTheme.of(context).brightness == Brightness.dark;
+    if (isDark != nowIsDark)
+      DynamicTheme.of(context)
+          .setBrightness(isDark ? Brightness.dark : Brightness.light);
   }
 
   void gotoSearch() {
@@ -66,9 +75,8 @@ class HomeState extends State<ActivityHome> {
 
   @override
   Widget build(BuildContext context) {
-    var media = MediaQuery.of(context);
-    var width = media.size.width;
-    width = width * .8;
+    final media = MediaQuery.of(context);
+    final width = (media.size.width * 0.8).roundToDouble();
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
@@ -183,10 +191,12 @@ class HomeState extends State<ActivityHome> {
                 ),
               ],
             ),
-            Quick(
-              key: _quickState,
-              width: width,
-              draggableModeChanged: _draggableModeChanged,
+            Center(
+              child: Quick(
+                key: _quickState,
+                width: width,
+                draggableModeChanged: _draggableModeChanged,
+              ),
             ),
             Container(
               margin: EdgeInsets.only(bottom: 10),
@@ -237,22 +247,4 @@ class HomeState extends State<ActivityHome> {
       ),
     );
   }
-}
-
-Iterable<Widget> favoriteTiles(context, Iterable<Book> books,
-    {void Function(Book book) onTap}) {
-  return books.map((book) => ListTile(
-        onTap: () {
-          onTap(book);
-        },
-        title: Text(book.name),
-        leading: Image.network(book.avatar),
-        subtitle: Text(
-          '作者：' + book.author,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
-          ),
-        ),
-      ));
 }

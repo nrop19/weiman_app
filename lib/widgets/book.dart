@@ -29,8 +29,8 @@ class WidgetBook extends StatelessWidget {
       dense: true,
       leading: Hero(
           tag: 'bookAvatar${book.aid}',
-          child: Image.network(
-            book.avatar,
+          child: Image(image:NetworkImageSSL(
+            book.avatar),
             height: 200,
             fit: BoxFit.scaleDown,
           )),
@@ -48,7 +48,7 @@ class WidgetBook extends StatelessWidget {
 }
 
 class WidgetChapter extends StatelessWidget {
-  static final double height = 56;
+  static final double height = kToolbarHeight;
   final Chapter chapter;
   final Function(Chapter) onTap;
   final bool read;
@@ -83,8 +83,8 @@ class WidgetChapter extends StatelessWidget {
         softWrap: true,
         maxLines: 2,
       ),
-      leading: Image.network(
-        chapter.avatar,
+      leading: Image(image:NetworkImageSSL(
+        chapter.avatar),
         fit: BoxFit.fitWidth,
         width: 100,
       ),
@@ -106,8 +106,8 @@ class WidgetHistory extends StatelessWidget {
           if (onTap != null) onTap(book);
         },
         title: Text(book.name),
-        leading: Image.network(
-          book.avatar,
+        leading: Image(image:NetworkImageSSL(
+          book.avatar),
           fit: BoxFit.fitHeight,
         ),
         subtitle: Text(book.history.cname),
@@ -173,7 +173,7 @@ class _WidgetBookCheckNew extends State<WidgetBookCheckNew> {
           openBook(context, widget.book, 'checkBook${widget.book.aid}'),
       leading: Hero(
         tag: 'checkBook${widget.book.aid}',
-        child: Image.network(widget.book.avatar),
+        child: Image(image:NetworkImageSSL(widget.book.avatar)),
       ),
       dense: true,
       isThreeLine: true,

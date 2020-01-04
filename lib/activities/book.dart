@@ -11,8 +11,9 @@ class ActivityBook extends StatefulWidget {
 }
 
 class BookState extends State<ActivityBook> {
+  static BoxDecoration _border;
   final GlobalKey<PullToRefreshNotificationState> _refresh = GlobalKey();
-  GlobalKey<NestedScrollViewState> _key = GlobalKey<NestedScrollViewState>();
+  ScrollController _scrollController;
 
   bool _reverse = false;
   bool isFavorite = false;
@@ -27,6 +28,13 @@ class BookState extends State<ActivityBook> {
     SchedulerBinding.instance.addPostFrameCallback((_) {
       _refresh.currentState.show();
     });
+    _scrollController = ScrollController();
+  }
+
+  @override
+  dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<bool> loadBook() async {
@@ -64,7 +72,7 @@ class BookState extends State<ActivityBook> {
       final history = book.chapters
           .firstWhere((chapter) => chapter.cid == book.history.cid);
       SchedulerBinding.instance.addPostFrameCallback((_) {
-        _key.currentState.currentInnerPosition.animateTo(
+        _scrollController.animateTo(
             WidgetChapter.height * chapters.indexOf(history).toDouble(),
             duration: Duration(milliseconds: 500),
             curve: Curves.linear);
@@ -93,70 +101,6 @@ class BookState extends State<ActivityBook> {
     });
   }
 
-  List<Widget> _headerBuilder(BuildContext context, bool innerBoxIsScrolled) {
-    Color color = isFavorite ? Colors.red : Colors.white;
-    IconData icon = isFavorite ? Icons.favorite : Icons.favorite_border;
-    final book = this.book ?? widget.book;
-    return <Widget>[
-      SliverAppBar(
-        floating: true,
-        pinned: true,
-        snap: false,
-        title: Text(widget.book.name),
-        expandedHeight: 200,
-        actions: <Widget>[
-          IconButton(
-              onPressed: _sort,
-              icon: Icon(_reverse
-                  ? FontAwesomeIcons.sortNumericDown
-                  : FontAwesomeIcons.sortNumericDownAlt)),
-          IconButton(onPressed: favoriteBook, icon: Icon(icon, color: color))
-        ],
-        flexibleSpace: FlexibleSpaceBar(
-          background: SafeArea(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Container(
-                  margin:
-                      EdgeInsets.only(top: 50, left: 20, right: 10, bottom: 20),
-                  height: 160,
-                  child: Hero(
-                    tag: widget.heroTag,
-                    child: Image.network(
-                      widget.book.avatar,
-                    ),
-                  ),
-                ),
-                Expanded(
-                    child: Container(
-                  padding: EdgeInsets.only(top: 50, right: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        '作者：' + (book.author ?? ''),
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      Container(
-                        margin: EdgeInsets.only(top: 10),
-                      ),
-                      Text(
-                        '简介：\n' + (book.description ?? ''),
-                        softWrap: true,
-                        style: TextStyle(color: Colors.white, height: 1.2),
-                      ),
-                    ],
-                  ),
-                )),
-              ],
-            ),
-          ),
-        ),
-      )
-    ];
-  }
-
   List<Widget> chapterWidgets() {
     final book = this.book ?? widget.book;
     List<Widget> list = [];
@@ -175,6 +119,16 @@ class BookState extends State<ActivityBook> {
     final book = this.book ?? widget.book;
     final chapter = chapters[index];
     final isRead = chapter.cid == book.history?.cid;
+    if (index < chapters.length - 1) {
+      return DecoratedBox(
+        decoration: _border,
+        child: WidgetChapter(
+          chapter: chapter,
+          onTap: _openChapter,
+          read: isRead,
+        ),
+      );
+    }
     return WidgetChapter(
       chapter: chapter,
       onTap: _openChapter,
@@ -184,6 +138,10 @@ class BookState extends State<ActivityBook> {
 
   @override
   Widget build(BuildContext context) {
+    if (_border == null)
+      _border = BoxDecoration(
+          border: Border(
+              bottom: Divider.createBorderSide(context, color: Colors.grey)));
     Color color = isFavorite ? Colors.red : Colors.white;
     IconData icon = isFavorite ? Icons.favorite : Icons.favorite_border;
     final book = this.book ?? widget.book;
@@ -192,139 +150,78 @@ class BookState extends State<ActivityBook> {
         key: _refresh,
         onRefresh: loadBook,
         maxDragOffset: kToolbarHeight * 2,
-        child: NestedScrollView(
-          key: _key,
-          headerSliverBuilder: (_, __) => [],
-          physics: AlwaysScrollableClampingScrollPhysics(),
-          body: CustomScrollView(
-            physics: AlwaysScrollableClampingScrollPhysics(),
-            slivers: [
-              SliverAppBar(
-                floating: true,
-                pinned: false,
-                title: Text(widget.book.name),
-                expandedHeight: 200,
-                actions: <Widget>[
-                  IconButton(
-                      onPressed: _sort,
-                      icon: Icon(_reverse
-                          ? FontAwesomeIcons.sortNumericDown
-                          : FontAwesomeIcons.sortNumericDownAlt)),
-                  IconButton(
-                      onPressed: favoriteBook, icon: Icon(icon, color: color))
-                ],
-                flexibleSpace: FlexibleSpaceBar(
-                  background: SafeArea(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Container(
-                          margin: EdgeInsets.only(
-                              top: 50, left: 20, right: 10, bottom: 20),
-                          height: 160,
-                          child: Hero(
-                            tag: widget.heroTag,
-                            child: Image.network(
-                              widget.book.avatar,
-                            ),
-                          ),
+        child: CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            SliverAppBar(
+              floating: true,
+              pinned: true,
+              title: Text(widget.book.name),
+              expandedHeight: 200,
+              actions: <Widget>[
+                IconButton(
+                    onPressed: _sort,
+                    icon: Icon(_reverse
+                        ? FontAwesomeIcons.sortNumericDown
+                        : FontAwesomeIcons.sortNumericDownAlt)),
+                IconButton(
+                    onPressed: favoriteBook, icon: Icon(icon, color: color))
+              ],
+              flexibleSpace: FlexibleSpaceBar(
+                background: SafeArea(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Container(
+                        margin: EdgeInsets.only(
+                            top: 50, left: 20, right: 10, bottom: 20),
+                        height: 160,
+                        child: Hero(
+                          tag: widget.heroTag,
+                          child:
+                              Image(image: NetworkImageSSL(widget.book.avatar)),
                         ),
-                        Expanded(
-                            child: Container(
-                          padding: EdgeInsets.only(top: 50, right: 20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                '作者：' + (book.author ?? ''),
-                                style: TextStyle(color: Colors.white),
-                              ),
-                              Container(
-                                margin: EdgeInsets.only(top: 10),
-                              ),
-                              Text(
-                                '简介：\n' + (book.description ?? ''),
-                                softWrap: true,
-                                style:
-                                    TextStyle(color: Colors.white, height: 1.2),
-                              ),
-                            ],
-                          ),
-                        )),
-                      ],
-                    ),
+                      ),
+                      Expanded(
+                          child: Container(
+                        padding: EdgeInsets.only(top: 50, right: 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              '作者：' + (book.author ?? ''),
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            Container(
+                              margin: EdgeInsets.only(top: 10),
+                            ),
+                            Text(
+                              '简介：\n' + (book.description ?? ''),
+                              softWrap: true,
+                              style:
+                                  TextStyle(color: Colors.white, height: 1.2),
+                            ),
+                          ],
+                        ),
+                      )),
+                    ],
                   ),
                 ),
               ),
-              PullToRefreshContainer((info) => SliverPullToRefreshHeader(
-                    info: info,
-                    onTap: () => _refresh.currentState
-                        .show(notificationDragOffset: kToolbarHeight * 2),
-                  )),
-              NestedScrollViewInnerScrollPositionKeyWidget(
-                Key('0'),
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    buildChapter,
-                    childCount: book.chapters.length,
-                  ),
-                ),
+            ),
+            PullToRefreshContainer((info) => SliverPullToRefreshHeader(
+                  info: info,
+                  onTap: () => _refresh.currentState
+                      .show(notificationDragOffset: kToolbarHeight * 2),
+                )),
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                buildChapter,
+                childCount: book.chapters.length,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ),
-    );
-  }
-
-  Widget build1(BuildContext context) {
-    final double statusBarHeight = MediaQuery.of(context).padding.top;
-    var pinnedHeaderHeight =
-        //statusBar height
-        statusBarHeight +
-            //pinned SliverAppBar height in header
-            kToolbarHeight;
-
-    return Scaffold(
-      body: NestedScrollViewRefreshIndicator(
-        key: _refresh,
-        onRefresh: loadBook,
-        child: NestedScrollView(
-          key: _key,
-          pinnedHeaderSliverHeightBuilder: () => pinnedHeaderHeight,
-          headerSliverBuilder: _headerBuilder,
-          body: LayoutBuilder(
-            builder: (_, __) {
-              if (isLoading)
-                return Container();
-              else if (isSuccess) {
-                return ListView(
-                    children: ListTile.divideTiles(
-                            context: context,
-                            color: Colors.grey,
-                            tiles: chapterWidgets())
-                        .toList());
-              }
-              return Container(
-                constraints: BoxConstraints.expand(),
-                alignment: Alignment.center,
-                child: Center(
-                  child: Text(
-                    '读取失败，下拉刷新\n如果多次失败，请检查网络',
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _key.currentState.currentInnerPosition.animateTo(0,
-              duration: Duration(milliseconds: 100), curve: Curves.linear);
-        },
-        child: Icon(FontAwesomeIcons.angleDoubleUp),
       ),
     );
   }

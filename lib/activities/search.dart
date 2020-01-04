@@ -69,7 +69,12 @@ class SearchState extends State<Search> {
                   },
                   child: TextField(
                     decoration: InputDecoration(
-                        hintText: '搜索书名', prefixIcon: Icon(Icons.search)),
+                      hintText: '搜索书名',
+                      prefixIcon: IconButton(
+                        onPressed: startSearch,
+                        icon: Icon(Icons.search),
+                      ),
+                    ),
                     textAlign: TextAlign.left,
                     controller: _controller,
                     autofocus: true,

@@ -21,7 +21,7 @@ class QuickBook extends DraggableItem {
         children: <Widget>[
           Hero(
             tag: '$heroTag ${book.aid}',
-            child: Image.network(book.avatar),
+            child: Image(image: NetworkImageSSL(book.avatar)),
           ),
           Positioned(
             left: 0,
@@ -79,7 +79,7 @@ class QuickState extends State<Quick> {
         .where((book) => !id.contains(book.aid))
         .map((book) => ListTile(
               title: Text(book.name),
-              leading: Image.network(book.avatar),
+              leading: Image(image: NetworkImageSSL(book.avatar)),
               onTap: () {
                 Navigator.pop(context, book);
               },
@@ -144,8 +144,6 @@ class QuickState extends State<Quick> {
   }
 
   int length() {
-//    print(_key.currentState.items);
-//    return 0;
     return _key.currentState.items.where((item) => item is QuickBook).length;
   }
 
@@ -165,6 +163,8 @@ class QuickState extends State<Quick> {
 
   @override
   Widget build(BuildContext context) {
+    final width = widget.width / 4 - 10;
+    final height = (width / 0.7).roundToDouble();
     return Column(
       children: <Widget>[
         Container(
@@ -176,39 +176,36 @@ class QuickState extends State<Quick> {
             style: TextStyle(color: Colors.grey, fontSize: 12),
           ),
         ),
-        Container(
-            width: widget.width,
-            child: DraggableContainer(
-              key: _key,
-              slotMargin: EdgeInsets.only(bottom: 8, left: 7, right: 7),
-              slotSize: Size(72, 100),
-              slotDecoration:
-                  BoxDecoration(color: Colors.grey.withOpacity(0.3)),
-              dragDecoration: BoxDecoration(
-                  boxShadow: [BoxShadow(color: Colors.black, blurRadius: 10)]),
-              items: _draggableItems,
-              onDraggableModeChanged: widget.draggableModeChanged,
-              onChanged: (List<DraggableItem> items) {
-                id.clear();
-                items.forEach((item) {
-                  if (item is QuickBook) id.add(item.book.aid);
-                });
-                Data.addQuickAll(id);
-                final nullIndex = items.indexOf(null);
-                final buttonIndex = items.indexOf(_addButton);
-                print('null $nullIndex, button $buttonIndex');
-                if (nullIndex > -1 && buttonIndex == -1) {
-                  _key.currentState.insteadOfIndex(nullIndex, _addButton,
-                      triggerEvent: false);
-                } else if (nullIndex > -1 &&
-                    buttonIndex > -1 &&
-                    nullIndex < buttonIndex) {
-                  _key.currentState.removeItem(_addButton);
-                  _key.currentState.insteadOfIndex(nullIndex, _addButton,
-                      triggerEvent: false);
-                }
-              },
-            )),
+        DraggableContainer(
+          key: _key,
+          slotMargin: EdgeInsets.only(bottom: 8, left: 6, right: 6),
+          slotSize: Size(width, height),
+          slotDecoration: BoxDecoration(color: Colors.grey.withOpacity(0.3)),
+          dragDecoration: BoxDecoration(
+              boxShadow: [BoxShadow(color: Colors.black, blurRadius: 10)]),
+          items: _draggableItems,
+          onDraggableModeChanged: widget.draggableModeChanged,
+          onChanged: (List<DraggableItem> items) {
+            id.clear();
+            items.forEach((item) {
+              if (item is QuickBook) id.add(item.book.aid);
+            });
+            Data.addQuickAll(id);
+            final nullIndex = items.indexOf(null);
+            final buttonIndex = items.indexOf(_addButton);
+            print('null $nullIndex, button $buttonIndex');
+            if (nullIndex > -1 && buttonIndex == -1) {
+              _key.currentState
+                  .insteadOfIndex(nullIndex, _addButton, triggerEvent: false);
+            } else if (nullIndex > -1 &&
+                buttonIndex > -1 &&
+                nullIndex < buttonIndex) {
+              _key.currentState.removeItem(_addButton);
+              _key.currentState
+                  .insteadOfIndex(nullIndex, _addButton, triggerEvent: false);
+            }
+          },
+        ),
       ],
     );
   }
