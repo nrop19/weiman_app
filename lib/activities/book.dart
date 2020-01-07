@@ -11,7 +11,6 @@ class ActivityBook extends StatefulWidget {
 }
 
 class BookState extends State<ActivityBook> {
-  static BoxDecoration _border;
   final GlobalKey<PullToRefreshNotificationState> _refresh = GlobalKey();
   ScrollController _scrollController;
 
@@ -26,7 +25,8 @@ class BookState extends State<ActivityBook> {
     super.initState();
     isFavorite = widget.book.isFavorite();
     SchedulerBinding.instance.addPostFrameCallback((_) {
-      _refresh.currentState.show();
+      _refresh.currentState
+          .show(notificationDragOffset: SliverPullToRefreshHeader.height);
     });
     _scrollController = ScrollController();
   }
@@ -56,12 +56,13 @@ class BookState extends State<ActivityBook> {
       if (isFavorite) Data.addFavorite(book);
 
       _scrollToRead();
+      isLoading = false;
       isSuccess = true;
     } catch (e) {
+      isLoading = false;
       isSuccess = false;
       return false;
     }
-    isLoading = false;
     print('刷新 $book');
     setState(() {});
     return true;
@@ -121,7 +122,7 @@ class BookState extends State<ActivityBook> {
     final isRead = chapter.cid == book.history?.cid;
     if (index < chapters.length - 1) {
       return DecoratedBox(
-        decoration: _border,
+        decoration: _Main._border,
         child: WidgetChapter(
           chapter: chapter,
           onTap: _openChapter,
@@ -138,10 +139,6 @@ class BookState extends State<ActivityBook> {
 
   @override
   Widget build(BuildContext context) {
-    if (_border == null)
-      _border = BoxDecoration(
-          border: Border(
-              bottom: Divider.createBorderSide(context, color: Colors.grey)));
     Color color = isFavorite ? Colors.red : Colors.white;
     IconData icon = isFavorite ? Icons.favorite : Icons.favorite_border;
     final book = this.book ?? widget.book;
@@ -211,8 +208,8 @@ class BookState extends State<ActivityBook> {
             ),
             PullToRefreshContainer((info) => SliverPullToRefreshHeader(
                   info: info,
-                  onTap: () => _refresh.currentState
-                      .show(notificationDragOffset: kToolbarHeight * 2),
+                  onTap: () => _refresh.currentState.show(
+                      notificationDragOffset: SliverPullToRefreshHeader.height),
                 )),
             SliverList(
               delegate: SliverChildBuilderDelegate(

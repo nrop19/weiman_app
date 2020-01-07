@@ -1,6 +1,7 @@
 part of '../main.dart';
 
 class SliverPullToRefreshHeader extends StatelessWidget {
+  static final double height = kToolbarHeight * 2;
   final PullToRefreshScrollNotificationInfo info;
   final void Function() onTap;
   final double fontSize;
@@ -24,7 +25,7 @@ class SliverPullToRefreshHeader extends StatelessWidget {
           WidgetSpan(
             baseline: TextBaseline.alphabetic,
             child: Padding(
-              child: Image.asset("images/logo.png", height: 20),
+              child: Image.asset("assets/logo.png", height: 20),
               padding: EdgeInsets.only(right: 5),
             ),
           ),
@@ -32,7 +33,7 @@ class SliverPullToRefreshHeader extends StatelessWidget {
     if (info.mode == RefreshIndicatorMode.error) {
       text.children.addAll([
         TextSpan(
-          text: '读取失败\n当失败次数太多请检查网络情况\n有些很旧的章节会看不到，请见谅\n',
+          text: '读取失败\n当失败次数太多可能是网络出现问题\n',
           style: TextStyle(
             color: Colors.red,
           ),

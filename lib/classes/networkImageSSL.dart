@@ -1,10 +1,4 @@
-import 'dart:async';
-import 'dart:io';
-import 'dart:typed_data';
-import 'dart:ui' as ui;
-
-import 'package:flutter/foundation.dart';
-import 'package:flutter/painting.dart' as image_provider;
+part of '../main.dart';
 
 /// The dart:io implementation of [image_provider.NetworkImage].
 class NetworkImageSSL
@@ -25,6 +19,8 @@ class NetworkImageSSL
 
   @override
   final Map<String, String> headers;
+
+  static void init(ByteData data) {}
 
   @override
   Future<NetworkImageSSL> obtainKey(
@@ -59,18 +55,12 @@ class NetworkImageSSL
   // We set `autoUncompress` to false to ensure that we can trust the value of
   // the `Content-Length` HTTP header. We automatically uncompress the content
   // in our call to [consolidateHttpClientResponseBytes].
-  static final HttpClient _sharedHttpClient = HttpClient()
+  static HttpClient _sharedHttpClient = HttpClient()
     ..autoUncompress = false
     ..badCertificateCallback = (_, __, ___) => true;
 
   static HttpClient get _httpClient {
-    HttpClient client = _sharedHttpClient;
-    assert(() {
-      if (image_provider.debugNetworkImageHttpClientProvider != null)
-        client = image_provider.debugNetworkImageHttpClientProvider();
-      return true;
-    }());
-    return client;
+    return _sharedHttpClient;
   }
 
   Future<ui.Codec> _loadAsync(
@@ -82,7 +72,8 @@ class NetworkImageSSL
       assert(key == this);
 
       final Uri resolved = Uri.base.resolve(key.url);
-      final HttpClientRequest request = await _httpClient.getUrl(resolved);
+      final HttpClientRequest request =
+          await _httpClient.getUrl(resolved).timeout(Duration(seconds: 5));
       headers?.forEach((String name, String value) {
         request.headers.add(name, value);
       });

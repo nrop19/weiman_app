@@ -5,8 +5,10 @@ class QuickBook extends DraggableItem {
   Widget child;
   final BuildContext context;
   final Book book;
+  final double width, height;
 
-  QuickBook({@required this.book, @required this.context}) {
+  QuickBook(this.width, this.height,
+      {@required this.book, @required this.context}) {
     child = GestureDetector(
       onTap: () {
         Navigator.push(
@@ -19,9 +21,16 @@ class QuickBook extends DraggableItem {
       },
       child: Stack(
         children: <Widget>[
-          Hero(
-            tag: '$heroTag ${book.aid}',
-            child: Image(image: NetworkImageSSL(book.avatar)),
+          SizedBox(
+            width: width,
+            height: height,
+            child: Hero(
+              tag: '$heroTag ${book.aid}',
+              child: Image(
+                image: NetworkImageSSL(book.avatar),
+                fit: BoxFit.cover,
+              ),
+            ),
           ),
           Positioned(
             left: 0,
@@ -68,6 +77,7 @@ class QuickState extends State<Quick> {
   DraggableItem _addButton;
   GlobalKey<DraggableContainerState> _key = GlobalKey();
   final List<String> id = [];
+  double width = 0, height = 0;
 
   void exit() {
     _key.currentState.draggableMode = false;
@@ -134,8 +144,8 @@ class QuickState extends State<Quick> {
             final book = await _showSelectBookDialog();
             print('选择了 $book');
             if (book == null) return;
-            _key.currentState.insteadOfIndex(
-                buttonIndex, QuickBook(book: book, context: context),
+            _key.currentState.insteadOfIndex(buttonIndex,
+                QuickBook(width, height, book: book, context: context),
                 force: true);
           }
         },
@@ -151,9 +161,11 @@ class QuickState extends State<Quick> {
   void initState() {
     super.initState();
 
+    width = widget.width / 4 - 10;
+    height = (width / 0.7).roundToDouble();
     _draggableItems.addAll(Data.quickList().map((book) {
       id.add(book.aid);
-      return QuickBook(book: book, context: context);
+      return QuickBook(width, height, book: book, context: context);
     }));
     if (_draggableItems.length < count) _draggableItems.add(_addButton);
     for (var i = count - _draggableItems.length; i > 0; i--) {
@@ -163,8 +175,6 @@ class QuickState extends State<Quick> {
 
   @override
   Widget build(BuildContext context) {
-    final width = widget.width / 4 - 10;
-    final height = (width / 0.7).roundToDouble();
     return Column(
       children: <Widget>[
         Container(

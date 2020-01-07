@@ -1,24 +1,5 @@
 part of '../main.dart';
 
-enum LoadState {
-  Loading,
-  Finish,
-  Timeout,
-}
-
-class LoadMoreListSource extends LoadingMoreBase<int> {
-  @override
-  Future<bool> loadData([bool isloadMoreAction = false]) {
-    return Future.delayed(Duration(seconds: 1), () {
-      for (var i = 0; i < 10; i++) {
-        this.add(0);
-      }
-
-      return true;
-    });
-  }
-}
-
 class ActivityChapter extends StatefulWidget {
   final Book book;
   final Chapter chapter;
@@ -77,14 +58,6 @@ class ChapterState extends State<ActivityChapter> {
               chapter: widget.book.chapters[index],
             );
           }),
-//      floatingActionButton: FloatingActionButton(
-//        child: Text('下一章'),
-//        onPressed: () {
-//          if (hasNextChapter)
-//            return openChapter(widget.book.chapters[chapterIndex + 1]);
-//          Fluttertoast.showToast(msg: '已经是最后一章了');
-//        },
-//      ),
     );
   }
 }
@@ -110,11 +83,9 @@ class _ChapterDrawer extends State<ChapterDrawer> {
   @override
   void initState() {
     super.initState();
-    _controller = ScrollController();
     updateRead();
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      _controller.jumpTo(WidgetChapter.height * read);
-    });
+    _controller =
+        ScrollController(initialScrollOffset: WidgetChapter.height * read);
   }
 
   @override
@@ -187,68 +158,68 @@ class _ChapterContentView extends State<ChapterContentView> {
   BoxDecoration _decoration =
       BoxDecoration(color: Colors.black.withOpacity(0.4));
 
-  int chapterIndex = -1;
-  bool hasNextChapter = false;
+  bool loading = true;
 
   @override
   initState() {
     super.initState();
-
-    chapterIndex = widget.book.chapters.indexOf(widget.chapter);
-    hasNextChapter = widget.book.chapters.last != widget.chapter;
     Data.addHistory(widget.book, widget.chapter);
     SchedulerBinding.instance.addPostFrameCallback((_) => _refresh?.currentState
-        ?.show(notificationDragOffset: kToolbarHeight * 2));
+        ?.show(notificationDragOffset: SliverPullToRefreshHeader.height));
   }
 
   Future<bool> fetchImages() async {
     print('fetchImages');
-    setState(() {});
+    if (mounted) setState(() {});
+    loading = true;
     images.clear();
     try {
       images.addAll(await UserAgentClient.instance
           .getImages(aid: widget.book.aid, cid: widget.chapter.cid)
-          .timeout(const Duration(seconds: 5)));
+          .timeout(Duration(seconds: 5)));
       if (images.length < 5) {
         // print('图片 前：' + images.toString());
-        var list = await checkImage(images.last);
+        final list =
+            await checkImage(images.last).timeout(Duration(seconds: 15));
         images.addAll(list);
       }
     } catch (e) {
-      print('错误');
+      print('错误 $e');
+      showToastWidget(
+        GestureDetector(
+          child: Container(
+            child: Text('读取章节内容出现错误\n点击复制错误内容'),
+            color: Colors.black.withOpacity(0.5),
+            padding: EdgeInsets.all(10),
+          ),
+          onTap: () async {
+            await Clipboard.setData(ClipboardData(text: e.toString()));
+            final content = await Clipboard.getData(Clipboard.kTextPlain);
+            print('粘贴板 ${content.text}');
+          },
+        ),
+        duration: Duration(seconds: 5),
+        handleTouch: true,
+      );
       return false;
       // throw(e);
     }
+    loading = false;
     // print('所有图片：' + images.toString());
-    setState(() {});
+    if (mounted) setState(() {});
     return true;
   }
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> list = [];
-    for (var i = 0; i < images.length; i++) {
-      list.add(SliverStickyHeader(
-        overlapsContent: true,
-        header: SafeArea(
-          top: true,
-          bottom: false,
-          child: Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(5),
-                decoration: _decoration,
-                child: Text(
-                  '${i + 1} / ${images.length}',
-                  style: _style,
-                ),
-              ),
-            ],
-          ),
-        ),
-        sliver:
-            SliverToBoxAdapter(child: Image(image: NetworkImageSSL(images[i]))),
-      ));
+    final list = <Widget>[];
+    if (!loading && images.length < 20) {
+      list.add(SliverToBoxAdapter(
+          child: Padding(
+              padding: EdgeInsets.all(5),
+              child: Text('只读取到少于20张图片，友情提示：\n'
+                  '由于能力有限，可能没有办法识别出本章的所有图片，\n'
+                  '敬请谅解。'))));
     }
     return PullToRefreshNotification(
       key: _refresh,
@@ -266,71 +237,132 @@ class _ChapterContentView extends State<ChapterContentView> {
           PullToRefreshContainer(
             (info) => SliverPullToRefreshHeader(
               info: info,
-              onTap: () => _refresh.currentState
-                  .show(notificationDragOffset: kToolbarHeight * 2),
+              onTap: () => _refresh.currentState.show(
+                  notificationDragOffset: SliverPullToRefreshHeader.height),
             ),
           ),
           ...list,
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (ctx, i) {
+                print('item $i');
+                return StickyHeader(
+                  overlapHeaders: true,
+                  header: SafeArea(
+                    top: true,
+                    bottom: false,
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(5),
+                          decoration: _decoration,
+                          child: Text(
+                            '${i + 1} / ${images.length}',
+                            style: _style,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  content: ExtendedImage(
+                    image: NetworkImageSSL(images[i]),
+                    enableLoadState: true,
+                    enableMemoryCache: true,
+                    fit: BoxFit.fitWidth,
+                    loadStateChanged: (state) {
+                      switch (state.extendedImageLoadState) {
+                        case LoadState.loading:
+                          return SizedBox(
+                            height: 300,
+                            child: Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                          break;
+                        case LoadState.failed:
+                          return SizedBox(
+                            width: double.infinity,
+                            height: 300,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text('图片读取失败'),
+                                RaisedButton(
+                                  child: Text('重试'),
+                                  onPressed: state.reLoadImage,
+                                ),
+                              ],
+                            ),
+                          );
+                          break;
+                        default:
+                          return ExtendedRawImage(
+                            image: state.extendedImageInfo?.image,
+                          );
+                      }
+                    },
+                  ),
+//                  content: Image(
+//                      image: NetworkImageSSL(images[i]),
+//                      loadingBuilder: (_, child, loadingProgress) {
+//                        if (loadingProgress == null) return child;
+//                        return SizedBox(
+//                          height: 400,
+//                          child: Center(
+//                            child: CircularProgressIndicator(
+//                              value: loadingProgress.expectedTotalBytes != null
+//                                  ? loadingProgress.cumulativeBytesLoaded /
+//                                      loadingProgress.expectedTotalBytes
+//                                  : null,
+//                            ),
+//                          ),
+//                        );
+//                      }),
+                );
+              },
+              childCount: images.length,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-Future<dynamic> checkImage(String last) async {
-  final response = new ReceivePort();
-  await Isolate.spawn(_checkImage, response.sendPort);
-  final sendPort = await response.first as SendPort;
-  //接收消息的ReceivePort
-  final answer = new ReceivePort();
-  //发送数据
-  sendPort.send([answer.sendPort, last]);
-  return answer.first;
-}
-
-void _checkImage(SendPort initialReplyTo) {
-  UserAgentClient.instance = UserAgentClient('chrome');
-  final port = new ReceivePort();
-  initialReplyTo.send(port.sendPort);
-  port.listen((message) async {
-    // 获取数据并解析
-    final send = message[0] as SendPort;
-    final last = message[1] as String;
-    // 返回结果
-    final uri = Uri.parse(last);
-    // print({'scheme': uri.scheme, 'host': uri.host, 'path': uri.path});
-    final a = uri.scheme + '://' + uri.host;
-    final b = uri.pathSegments.take(uri.pathSegments.length - 1).join('/');
-    // print({'a': a, 'b': b});
-    //网址最后的图片文件名
-    final file = uri.pathSegments.last.split('.');
-    final fileName = file[0];
-    // 图片格式
-    final fileFormat = file[1];
-    final list = <String>[];
-    int plus = 1;
-    //print('最后的图片：' + last);
-    while (true) {
-      final String file1 =
-              getFileName(name: fileName, divider: '_', plus: plus),
-          file2 = getFileName(name: fileName, divider: '_', plus: plus + 1);
-      var url1 = '$a/$b/$file1.$fileFormat', url2 = '$a/$b/$file2.$fileFormat';
-      // print('正在测试:\n' + url1 + '\n' + url2);
-      final res = await Future.wait([
-        UserAgentClient.instance.head(url1),
-        UserAgentClient.instance.head(url2)
-      ]);
-      if (res[0].statusCode != 200) break;
-      list.add(url1);
-      if (res[1].statusCode != 200) {
-        break;
-      }
-      list.add(url2);
-      plus += 2;
+Future<List<String>> checkImage(String last) async {
+  final uri = Uri.parse(last);
+  // print({'scheme': uri.scheme, 'host': uri.host, 'path': uri.path});
+  final a = uri.scheme + '://' + uri.host;
+  final b = uri.pathSegments.take(uri.pathSegments.length - 1).join('/');
+  // print({'a': a, 'b': b});
+  //网址最后的图片文件名
+  final file = uri.pathSegments.last.split('.');
+  final fileName = file[0];
+  // 图片格式
+  final fileFormat = file[1];
+  final List<String> list = [];
+  int plus = 1;
+  //print('最后的图片：' + last);
+  while (true) {
+    final String file1 = getFileName(name: fileName, divider: '_', plus: plus),
+        file2 = getFileName(name: fileName, divider: '_', plus: plus + 1);
+    var url1 = '$a/$b/$file1.$fileFormat', url2 = '$a/$b/$file2.$fileFormat';
+    // print('正在测试:\n' + url1 + '\n' + url2);
+    final res = await Future.wait([
+      UserAgentClient.instance.head(url1),
+      UserAgentClient.instance.head(url2)
+    ]);
+    if (res[0].statusCode != 200) break;
+    list.add(url1);
+    if (res[1].statusCode != 200) {
+      break;
     }
-    // print('最后的图片数量: ' + number.toString());
-    send.send(list);
-  });
+    list.add(url2);
+    plus += 2;
+  }
+  // print('最后的图片数量: ' + number.toString());
+  return list;
 }
 
 String getFileName(

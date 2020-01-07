@@ -3,14 +3,15 @@ part of '../main.dart';
 const domain = '';
 
 class UserAgentClient extends http.BaseClient {
-  final String userAgent;
-  http.Client _inner;
+  http.Client _inner = http.Client();
   String lastKey;
   int lastKeyTime = 0;
 
   static UserAgentClient instance;
 
-  UserAgentClient(this.userAgent) {
+//  UserAgentClient(this.userAgent);
+
+  UserAgentClient(String userAgent, ByteData data) {
   }
 
   Future<String> getKey() async {
@@ -21,6 +22,7 @@ class UserAgentClient extends http.BaseClient {
   }
 
   Future<List<String>> getImages(
+      {@required String aid, @required String cid}) async {
   }
 
   Future<Book> getBook({String aid}) async {
@@ -32,7 +34,7 @@ class UserAgentClient extends http.BaseClient {
   Future<List<Book>> searchBook(String name) async {
   }
 
-  static void init(String userAgent) {
+  static void init() async {
   }
 
   Future<http.Response> _get(url, {Map<String, String> headers}) async {

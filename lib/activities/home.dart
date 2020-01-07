@@ -32,9 +32,8 @@ class HomeState extends State<ActivityHome> {
           .where((int updatedChapters) => updatedChapters > 0)
           .length;
       if (updated > 0)
-        Fluttertoast.showToast(
-          msg: '$updated 本藏书有更新',
-          gravity: ToastGravity.CENTER,
+        showToast(
+          '$updated 本藏书有更新',
           backgroundColor: Colors.black.withOpacity(0.5),
         );
     });
@@ -61,7 +60,7 @@ class HomeState extends State<ActivityHome> {
         context,
         MaterialPageRoute(
           settings: RouteSettings(name: '/activity_recommend/'),
-          builder: (_) => ActivityRecommend(),
+          builder: (_) => ActivityRank(),
         ));
   }
 

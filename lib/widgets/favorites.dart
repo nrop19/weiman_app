@@ -44,9 +44,8 @@ class _FavoriteList extends State<FavoriteList> {
     if (all.isNotEmpty) {
       if (showTip == false) {
         showTip = true;
-        Fluttertoast.showToast(
-          msg: '下拉列表可以检查漫画更新',
-          gravity: ToastGravity.CENTER,
+        showToast(
+          '下拉列表可以检查漫画更新',
           backgroundColor: Colors.black.withOpacity(0.5),
         );
       }
@@ -174,7 +173,9 @@ class FBookItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       onTap: () => onTap(book),
-      leading: Hero(tag: 'fb ${book.aid}', child: Image(image:NetworkImageSSL(book.avatar))),
+      leading: Hero(
+          tag: 'fb ${book.aid}',
+          child: Image(image: NetworkImageSSL(book.avatar))),
       title: Text(book.name, style: Theme.of(context).textTheme.body1),
       subtitle: RichText(text: subtitle),
     );

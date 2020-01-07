@@ -14,121 +14,109 @@ class Search extends StatefulWidget {
   }
 }
 
-enum _SearchState {
-  None,
-  Searching,
-  Done,
-  Error,
-}
-
 class SearchState extends State<Search> {
-  Future<List<Book>> search;
   TextEditingController _controller = TextEditingController();
-  CancelableOperation _searcher;
-  _SearchState _state = _SearchState.None;
+  GlobalKey<PullToRefreshNotificationState> _refresh = GlobalKey();
   final List<Book> _books = [];
+  bool loading;
 
-  void startSearch() {
+  void submit() {
+    _refresh.currentState
+        .show(notificationDragOffset: SliverPullToRefreshHeader.height);
+  }
+
+  Future<bool> startSearch() async {
     print('搜索漫画: ' + _controller.text);
-    if (_searcher != null) _searcher.cancel();
-    _books.clear();
     setState(() {
-      _state = _SearchState.Searching;
+      loading = true;
     });
-    _searcher = CancelableOperation.fromFuture(
-            UserAgentClient.instance.searchBook(_controller.text))
-        .then((books) {
-      setState(() {
-        print('搜索完成: ' + books.length.toString());
-        _books.addAll(books);
-        _state = _SearchState.Done;
-      });
-    });
+    _books.clear();
+    try {
+      final List<Book> books = await UserAgentClient.instance
+          .searchBook(_controller.text)
+          .timeout(Duration(seconds: 5));
+      _books.addAll(books);
+      loading = false;
+    } catch (e) {
+      loading = false;
+      return false;
+    }
+    return true;
   }
 
   @override
   Widget build(BuildContext context) {
-    search = null;
     return Scaffold(
-      appBar: AppBar(
-        title: Text('搜索漫画'),
-      ),
-      body: Column(
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: RawKeyboardListener(
-                  focusNode: FocusNode(),
-                  onKey: (RawKeyEvent event) {
-                    if (event.runtimeType == RawKeyUpEvent &&
-                        event.logicalKey.debugName.toLowerCase() == 'enter') {
-                      if (_controller.text.isEmpty) return;
-                      startSearch();
-                    }
-                  },
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: '搜索书名',
-                      prefixIcon: IconButton(
-                        onPressed: startSearch,
-                        icon: Icon(Icons.search),
-                      ),
-                    ),
-                    textAlign: TextAlign.left,
-                    controller: _controller,
-                    autofocus: true,
-                    textInputAction: TextInputAction.search,
-                    onSubmitted: (String name) {
-                      print('onSubmitted');
-                      startSearch();
-                    },
-                    keyboardType: TextInputType.text,
-                    onEditingComplete: () {
-                      print('onEditingComplete');
-                      startSearch();
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-          Expanded(
-            flex: 1,
-            child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints constraints) {
-                switch (_state) {
-                  case _SearchState.Searching:
-                    return Center(child: CircularProgressIndicator());
-                  case _SearchState.None:
-                    return Center(
-                        child: Icon(
-                      Icons.search,
-                      color: Colors.grey,
-                    ));
-                  default:
-                    if (_books.length == 0)
-                      return Center(
-                          child: Text(
-                        '一本也找不到',
-                        style: TextStyle(color: Colors.blueGrey),
-                      ));
-                    List<Widget> list = _books
-                        .map((book) => WidgetBook(
-                              book,
-                              subtitle: book.author,
-                            ))
-                        .toList();
-                    return ListView(
-                      children:
-                          ListTile.divideTiles(context: context, tiles: list)
-                              .toList(),
-                    );
+      body: PullToRefreshNotification(
+        key: _refresh,
+        onRefresh: startSearch,
+        child: CustomScrollView(slivers: [
+          SliverAppBar(
+            pinned: true,
+            title: RawKeyboardListener(
+              focusNode: FocusNode(),
+              onKey: (RawKeyEvent event) {
+                print(
+                    'is enter: ${LogicalKeyboardKey.enter == event.logicalKey}');
+                if (_controller.text.isEmpty) return;
+                if (event.runtimeType == RawKeyUpEvent &&
+                    LogicalKeyboardKey.enter == event.logicalKey) {
+                  print('回车键搜索');
+                  submit();
                 }
               },
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: '搜索书名',
+                  prefixIcon: IconButton(
+                    onPressed: () {
+                      _refresh.currentState.show(
+                          notificationDragOffset:
+                              SliverPullToRefreshHeader.height);
+                    },
+                    icon: Icon(Icons.search),
+                  ),
+                ),
+                textAlign: TextAlign.left,
+                controller: _controller,
+                autofocus: true,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (String name) {
+                  print('onSubmitted');
+                  submit();
+                },
+                keyboardType: TextInputType.text,
+                onEditingComplete: () {
+                  print('onEditingComplete');
+                  submit();
+                },
+              ),
             ),
           ),
-        ],
+          PullToRefreshContainer((info) => SliverPullToRefreshHeader(
+                info: info,
+                onTap: submit,
+              )),
+          SliverLayoutBuilder(
+            builder: (_, __) {
+              if (loading == null)
+                return SliverFillRemaining(
+                    child: Center(child: Text('输入关键词搜索')));
+              if (loading) return SliverToBoxAdapter();
+              if (_books.length == 0) {
+                return SliverFillRemaining(child: Center(child: Text('一本也没有')));
+              }
+              return SliverList(
+                delegate: SliverChildBuilderDelegate((_, i) {
+                  return WidgetBook(
+                    _books[i],
+                    subtitle: _books[i].author,
+                  );
+                }, childCount: _books.length),
+              );
+            },
+          ),
+        ]),
       ),
     );
   }

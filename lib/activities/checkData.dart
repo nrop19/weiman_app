@@ -79,12 +79,7 @@ class _State extends State<ActivityCheckData> {
         maxLines: 8,
         controller: _outputController,
         onTap: () {
-          Fluttertoast.showToast(
-            msg: '已经复制',
-            toastLength: Toast.LENGTH_SHORT,
-            gravity: ToastGravity.BOTTOM,
-            timeInSecForIos: 1,
-          );
+          showToast('已经复制');
           Clipboard.setData(ClipboardData(text: _outputController.text));
         },
       ));
