@@ -26,10 +26,11 @@ class HomeState extends State<ActivityHome> {
     /// 提前检查一次藏书的更新情况
     SchedulerBinding.instance.addPostFrameCallback((_) async {
       autoSwitchTheme();
-      _FavoriteList.getBooks();
-      await _FavoriteList.checkNews();
-      final updated = _FavoriteList.hasNews.values
-          .where((int updatedChapters) => updatedChapters > 0)
+      FavoriteData favData = Provider.of<FavoriteData>(context,listen: false);
+      await favData.loadBooksList();
+      await favData.checkNews(Provider.of<SettingData>(context, listen: false).autoCheck);
+      final updated = favData.hasNews.values
+          .where((int count) => count > 0)
           .length;
       if (updated > 0)
         showToast(
@@ -59,9 +60,13 @@ class HomeState extends State<ActivityHome> {
     Navigator.push(
         context,
         MaterialPageRoute(
-          settings: RouteSettings(name: '/activity_recommend/'),
+          settings: RouteSettings(name: '/activity_recommend'),
           builder: (_) => ActivityRank(),
         ));
+  }
+
+  void gotoPatreon() {
+    launch('https://www.patreon.com/nrop19');
   }
 
   bool isEdit = false;
@@ -104,6 +109,18 @@ class HomeState extends State<ActivityHome> {
           ),
           SizedBox(width: 20),
 
+          /// 设置界面
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      settings: RouteSettings(name: '/activity_setting'),
+                      builder: (_) => ActivitySetting()));
+            },
+            icon: Icon(FontAwesomeIcons.cog),
+          ),
+
           /// 收藏列表
           IconButton(
             onPressed: () {
@@ -138,110 +155,125 @@ class HomeState extends State<ActivityHome> {
           },
         ),
       ),
-      body: Container(
-        alignment: Alignment.center,
-        padding: EdgeInsets.only(left: 40, right: 40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisSize: MainAxisSize.max,
-          children: <Widget>[
-            Container(
-              child: OutlineButton(
-                onPressed: gotoSearch,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Icon(
-                      Icons.search,
-                      color: Colors.blue,
-                    ),
-                    Text(
-                      '搜索漫画',
-                      style: TextStyle(color: Colors.blue),
-                    )
-                  ],
+      body: Center(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(left: 40, right: 40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.max,
+            children: <Widget>[
+              Container(
+                child: OutlineButton(
+                  onPressed: gotoSearch,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Icon(
+                        Icons.search,
+                        color: Colors.blue,
+                      ),
+                      Text(
+                        '搜索漫画',
+                        style: TextStyle(color: Colors.blue),
+                      )
+                    ],
+                  ),
+                  borderSide: BorderSide(color: Colors.blue, width: 2),
+                  shape: StadiumBorder(),
                 ),
-                borderSide: BorderSide(color: Colors.blue, width: 2),
-                shape: StadiumBorder(),
               ),
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlineButton(
-                    onPressed: gotoRecommend,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: <Widget>[
-                        Icon(
-                          Icons.whatshot,
-                          color: Colors.red,
-                        ),
-                        Text(
-                          '月排行榜',
-                          style: TextStyle(color: Colors.red),
-                        )
-                      ],
+              Row(
+                children: [
+                  Expanded(
+                    flex: 7,
+                    child: OutlineButton(
+                      onPressed: gotoRecommend,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          Icon(
+                            Icons.whatshot,
+                            color: Colors.red,
+                          ),
+                          Text(
+                            '月排行榜',
+                            style: TextStyle(color: Colors.red),
+                          )
+                        ],
+                      ),
+                      borderSide: BorderSide(color: Colors.red, width: 2),
+                      shape: StadiumBorder(),
                     ),
-                    borderSide: BorderSide(color: Colors.red, width: 2),
-                    shape: StadiumBorder(),
+                  ),
+//                  SizedBox(width: 10),
+//                  Expanded(
+//                    flex: 3,
+//                    child: OutlineButton(
+//                      onPressed: gotoPatreon,
+//                      child: Text.rich(
+//                        TextSpan(children: [TextSpan(text: '赞助')]),
+//                        style: TextStyle(color: Colors.red),
+//                      ),
+//                      borderSide: BorderSide(color: Colors.red, width: 2),
+//                      shape: StadiumBorder(),
+//                    ),
+//                  ),
+                ],
+              ),
+              Center(
+                child: Quick(
+                  key: _quickState,
+                  width: width,
+                  draggableModeChanged: _draggableModeChanged,
+                ),
+              ),
+              Container(
+                margin: EdgeInsets.only(bottom: 10),
+                child: Text(
+                  '在 level-plus.net 论坛首发',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey[500]),
+                ),
+              ),
+              GestureDetector(
+                onTap: () async {
+                  if (await canLaunch('tg://resolve?domain=weiman_app'))
+                    launch('tg://resolve?domain=weiman_app');
+                  else
+                    launch('https://t.me/weiman_app');
+                },
+                child: Text(
+                  '关注 Telegram 广播频道',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.blue[200],
+                    decoration: TextDecoration.underline,
                   ),
                 ),
-              ],
-            ),
-            Center(
-              child: Quick(
-                key: _quickState,
-                width: width,
-                draggableModeChanged: _draggableModeChanged,
               ),
-            ),
-            Container(
-              margin: EdgeInsets.only(bottom: 10),
-              child: Text(
-                '在 level-plus.net 论坛首发',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey[500]),
-              ),
-            ),
-            GestureDetector(
-              onTap: () async {
-                if (await canLaunch('tg://resolve?domain=weiman_app'))
-                  launch('tg://resolve?domain=weiman_app');
-                else
-                  launch('https://t.me/weiman_app');
-              },
-              child: Text(
-                'Telegram广播频道',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.blue[200],
-                  decoration: TextDecoration.underline,
+              Visibility(
+                visible: isDevMode,
+                child: FlatButton(
+                  onPressed: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => ActivityTest()));
+                  },
+                  child: Text('测试界面'),
                 ),
               ),
-            ),
-            Visibility(
-              visible: isDevMode,
-              child: FlatButton(
-                onPressed: () {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => ActivityTest()));
-                },
-                child: Text('测试界面'),
+              Visibility(
+                visible: isDevMode,
+                child: FlatButton(
+                  onPressed: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => ActivityCheckData()));
+                  },
+                  child: Text('操作 收藏列表数据'),
+                ),
               ),
-            ),
-            Visibility(
-              visible: isDevMode,
-              child: FlatButton(
-                onPressed: () {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => ActivityCheckData()));
-                },
-                child: Text('操作 收藏列表数据'),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -19,6 +19,7 @@ class ChapterState extends State<ActivityChapter> {
   @override
   void initState() {
     super.initState();
+    saveHistory(widget.chapter);
     _pageController = PageController(
         keepPage: false,
         initialPage: widget.book.chapters.indexOf(widget.chapter));
@@ -28,6 +29,15 @@ class ChapterState extends State<ActivityChapter> {
   void dispose() {
     _pageController?.dispose();
     super.dispose();
+  }
+
+  void pageChanged(int page) {
+    saveHistory(widget.book.chapters[page]);
+    widget.book.saveBookCache();
+  }
+
+  void saveHistory(Chapter chapter) {
+    Data.addHistory(widget.book, chapter);
   }
 
   @override
@@ -41,23 +51,25 @@ class ChapterState extends State<ActivityChapter> {
         },
       ),
       body: PageView.builder(
-          physics: AlwaysScrollableClampingScrollPhysics(),
-          controller: _pageController,
-          itemCount: widget.book.chapters.length,
-          itemBuilder: (ctx, index) {
-            return ChapterContentView(
-              actions: [
-                IconButton(
-                  icon: Icon(Icons.menu),
-                  onPressed: () {
-                    _scaffoldKey.currentState.openEndDrawer();
-                  },
-                ),
-              ],
-              book: widget.book,
-              chapter: widget.book.chapters[index],
-            );
-          }),
+        physics: AlwaysScrollableClampingScrollPhysics(),
+        controller: _pageController,
+        itemCount: widget.book.chapters.length,
+        onPageChanged: pageChanged,
+        itemBuilder: (ctx, index) {
+          return ChapterContentView(
+            actions: [
+              IconButton(
+                icon: Icon(Icons.menu),
+                onPressed: () {
+                  _scaffoldKey.currentState.openEndDrawer();
+                },
+              ),
+            ],
+            book: widget.book,
+            chapter: widget.book.chapters[index],
+          );
+        },
+      ),
     );
   }
 }
@@ -170,19 +182,19 @@ class _ChapterContentView extends State<ChapterContentView> {
 
   Future<bool> fetchImages() async {
     print('fetchImages');
-    if (mounted) setState(() {});
     loading = true;
     images.clear();
+    if (mounted) setState(() {});
+    final _images = Chapter.fromCache(widget.book, widget.chapter);
+    if (_images != null) {
+      print('章节 有缓存');
+      images.addAll(_images);
+      return true;
+    }
     try {
-      images.addAll(await UserAgentClient.instance
-          .getImages(aid: widget.book.aid, cid: widget.chapter.cid)
-          .timeout(Duration(seconds: 5)));
-      if (images.length < 5) {
-        // print('图片 前：' + images.toString());
-        final list =
-            await checkImage(images.last).timeout(Duration(seconds: 15));
-        images.addAll(list);
-      }
+      images.addAll(await HttpHHMH39.instance
+          .getChapterImages(widget.book, widget.chapter)
+          .timeout(Duration(seconds: 10)));
     } catch (e) {
       print('错误 $e');
       showToastWidget(
@@ -206,6 +218,7 @@ class _ChapterContentView extends State<ChapterContentView> {
     }
     loading = false;
     // print('所有图片：' + images.toString());
+    Chapter.saveCache(widget.book, widget.chapter, images);
     if (mounted) setState(() {});
     return true;
   }
@@ -264,8 +277,9 @@ class _ChapterContentView extends State<ChapterContentView> {
                       ],
                     ),
                   ),
-                  content: ExtendedImage(
-                    image: NetworkImageSSL(images[i]),
+                  content: ExtendedImage.network(
+                    images[i],
+                    cache: true,
                     enableLoadState: true,
                     enableMemoryCache: true,
                     fit: BoxFit.fitWidth,
@@ -303,22 +317,6 @@ class _ChapterContentView extends State<ChapterContentView> {
                       }
                     },
                   ),
-//                  content: Image(
-//                      image: NetworkImageSSL(images[i]),
-//                      loadingBuilder: (_, child, loadingProgress) {
-//                        if (loadingProgress == null) return child;
-//                        return SizedBox(
-//                          height: 400,
-//                          child: Center(
-//                            child: CircularProgressIndicator(
-//                              value: loadingProgress.expectedTotalBytes != null
-//                                  ? loadingProgress.cumulativeBytesLoaded /
-//                                      loadingProgress.expectedTotalBytes
-//                                  : null,
-//                            ),
-//                          ),
-//                        );
-//                      }),
                 );
               },
               childCount: images.length,
@@ -349,10 +347,8 @@ Future<List<String>> checkImage(String last) async {
         file2 = getFileName(name: fileName, divider: '_', plus: plus + 1);
     var url1 = '$a/$b/$file1.$fileFormat', url2 = '$a/$b/$file2.$fileFormat';
     // print('正在测试:\n' + url1 + '\n' + url2);
-    final res = await Future.wait([
-      UserAgentClient.instance.head(url1),
-      UserAgentClient.instance.head(url2)
-    ]);
+    final res = await Future.wait(
+        [HttpHHMH39.instance.head(url1), HttpHHMH39.instance.head(url2)]);
     if (res[0].statusCode != 200) break;
     list.add(url1);
     if (res[1].statusCode != 200) {

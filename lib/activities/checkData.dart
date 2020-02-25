@@ -17,7 +17,7 @@ final titleTextStyle = TextStyle(fontSize: 14, color: Colors.blue),
 
 class _State extends State<ActivityCheckData> {
   CheckState firstState;
-  int firstLength;
+  int firstLength = 0;
   final TextSpan secondResults = TextSpan();
   TextEditingController _outputController, _inputController;
 

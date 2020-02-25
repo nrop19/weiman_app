@@ -7,10 +7,15 @@ class NetworkImageSSL
   /// Creates an object that fetches the image at the given URL.
   ///
   /// The arguments [url] and [scale] must not be null.
-  const NetworkImageSSL(this.url, {this.scale = 1.0, this.headers})
-      : assert(url != null),
+  const NetworkImageSSL(
+    this.url, {
+    this.scale = 1.0,
+    this.headers,
+    this.timeout = 8,
+  })  : assert(url != null),
         assert(scale != null);
 
+  final int timeout;
   @override
   final String url;
 
@@ -72,8 +77,9 @@ class NetworkImageSSL
       assert(key == this);
 
       final Uri resolved = Uri.base.resolve(key.url);
-      final HttpClientRequest request =
-          await _httpClient.getUrl(resolved).timeout(Duration(seconds: 5));
+      final HttpClientRequest request = await _httpClient
+          .getUrl(resolved)
+          .timeout(Duration(seconds: timeout));
       headers?.forEach((String name, String value) {
         request.headers.add(name, value);
       });

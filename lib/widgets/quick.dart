@@ -55,7 +55,7 @@ class QuickBook extends DraggableItem {
   }
 
   checkUpdate() {
-    UserAgentClient.instance.getBook(aid: book.aid);
+    HttpHHMH39.instance.getBook(book.aid);
   }
 }
 
@@ -72,11 +72,12 @@ class Quick extends StatefulWidget {
 }
 
 class QuickState extends State<Quick> {
+  final List<String> id = [];
   final int count = 8;
   final List<DraggableItem> _draggableItems = [];
   DraggableItem _addButton;
-  GlobalKey<DraggableContainerState> _key = GlobalKey();
-  final List<String> id = [];
+  GlobalKey<DraggableContainerState> _key =
+      GlobalKey<DraggableContainerState>();
   double width = 0, height = 0;
 
   void exit() {
@@ -170,6 +171,25 @@ class QuickState extends State<Quick> {
     if (_draggableItems.length < count) _draggableItems.add(_addButton);
     for (var i = count - _draggableItems.length; i > 0; i--) {
       _draggableItems.add(null);
+    }
+
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      print('添加监听');
+      Provider.of<FavoriteData>(context, listen: false).addListener(refresh);
+    });
+  }
+
+  void refresh() {
+    final id = Data._quickIdList();
+    // print('refresh $id');
+    for (var i = 0; i < _draggableItems.length; i++) {
+      final item = _draggableItems[i];
+      if (item is QuickBook) {
+        // print('is QuickBook，delete : ${id.contains(item.book.aid)}');
+        if (!id.contains(item.book.aid)) {
+          _key.currentState.insteadOfIndex(i, null);
+        }
+      }
     }
   }
 

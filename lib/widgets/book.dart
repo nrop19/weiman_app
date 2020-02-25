@@ -28,12 +28,13 @@ class WidgetBook extends StatelessWidget {
       ),
       dense: true,
       leading: Hero(
-          tag: 'bookAvatar${book.aid}',
-          child: Image(image:NetworkImageSSL(
-            book.avatar),
-            height: 200,
-            fit: BoxFit.scaleDown,
-          )),
+        tag: 'bookAvatar${book.aid}',
+        child: Image(
+          image: ExtendedNetworkImageProvider(book.avatar, cache: true),
+          height: 200,
+          fit: BoxFit.scaleDown,
+        ),
+      ),
       trailing: Icon(
         isLiked ? Icons.favorite : Icons.favorite_border,
         color: isLiked ? Colors.red : Colors.grey,
@@ -57,7 +58,7 @@ class WidgetChapter extends StatelessWidget {
     Key key,
     this.chapter,
     this.onTap,
-    this.read,
+    this.read = false,
   }) : super(key: key);
 
   @override
@@ -83,11 +84,16 @@ class WidgetChapter extends StatelessWidget {
         softWrap: true,
         maxLines: 2,
       ),
-      leading: Image(image:NetworkImageSSL(
-        chapter.avatar),
-        fit: BoxFit.fitWidth,
-        width: 100,
-      ),
+      leading: chapter.avatar == null
+          ? null
+          : Image(
+              image: ExtendedNetworkImageProvider(
+                chapter.avatar,
+                cache: true,
+              ),
+              fit: BoxFit.fitWidth,
+              width: 100,
+            ),
     );
   }
 }
@@ -106,8 +112,8 @@ class WidgetHistory extends StatelessWidget {
           if (onTap != null) onTap(book);
         },
         title: Text(book.name),
-        leading: Image(image:NetworkImageSSL(
-          book.avatar),
+        leading: Image(
+          image: ExtendedNetworkImageProvider(book.avatar, cache: true),
           fit: BoxFit.fitHeight,
         ),
         subtitle: Text(book.history.cname),
@@ -138,8 +144,8 @@ class _WidgetBookCheckNew extends State<WidgetBookCheckNew> {
   void load() async {
     loading = true;
     try {
-      final book = await UserAgentClient.instance
-          .getBook(aid: widget.book.aid)
+      final book = await HttpHHMH39.instance
+          .getBook(widget.book.aid)
           .timeout(Duration(seconds: 2));
       news = book.chapterCount - widget.book.chapterCount;
       hasError = false;
@@ -173,7 +179,9 @@ class _WidgetBookCheckNew extends State<WidgetBookCheckNew> {
           openBook(context, widget.book, 'checkBook${widget.book.aid}'),
       leading: Hero(
         tag: 'checkBook${widget.book.aid}',
-        child: Image(image:NetworkImageSSL(widget.book.avatar)),
+        child: Image(
+            image:
+                ExtendedNetworkImageProvider(widget.book.avatar, cache: true)),
       ),
       dense: true,
       isThreeLine: true,

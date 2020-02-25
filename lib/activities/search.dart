@@ -32,7 +32,7 @@ class SearchState extends State<Search> {
     });
     _books.clear();
     try {
-      final List<Book> books = await UserAgentClient.instance
+      final List<Book> books = await HttpHHMH39.instance
           .searchBook(_controller.text)
           .timeout(Duration(seconds: 5));
       _books.addAll(books);
@@ -47,52 +47,56 @@ class SearchState extends State<Search> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: RawKeyboardListener(
+          focusNode: FocusNode(),
+          onKey: (RawKeyEvent event) {
+            print('is enter: ${LogicalKeyboardKey.enter == event.logicalKey}');
+            if (_controller.text.isEmpty) return;
+            if (event.runtimeType == RawKeyUpEvent &&
+                LogicalKeyboardKey.enter == event.logicalKey) {
+              print('回车键搜索');
+              submit();
+            }
+          },
+          child: FocusWidget.builder(
+            context,
+            (_, focusNode) => TextField(
+              focusNode: focusNode,
+              decoration: InputDecoration(
+                hintText: '搜索书名',
+                prefixIcon: IconButton(
+                  onPressed: () {
+                    _refresh.currentState.show(
+                        notificationDragOffset:
+                            SliverPullToRefreshHeader.height);
+                  },
+                  icon: Icon(Icons.search),
+                ),
+              ),
+              textAlign: TextAlign.left,
+              controller: _controller,
+              autofocus: true,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (String name) {
+                focusNode.unfocus();
+                print('onSubmitted');
+                submit();
+              },
+              keyboardType: TextInputType.text,
+              onEditingComplete: () {
+                focusNode.unfocus();
+                print('onEditingComplete');
+                submit();
+              },
+            ),
+          ),
+        ),
+      ),
       body: PullToRefreshNotification(
         key: _refresh,
         onRefresh: startSearch,
         child: CustomScrollView(slivers: [
-          SliverAppBar(
-            pinned: true,
-            title: RawKeyboardListener(
-              focusNode: FocusNode(),
-              onKey: (RawKeyEvent event) {
-                print(
-                    'is enter: ${LogicalKeyboardKey.enter == event.logicalKey}');
-                if (_controller.text.isEmpty) return;
-                if (event.runtimeType == RawKeyUpEvent &&
-                    LogicalKeyboardKey.enter == event.logicalKey) {
-                  print('回车键搜索');
-                  submit();
-                }
-              },
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: '搜索书名',
-                  prefixIcon: IconButton(
-                    onPressed: () {
-                      _refresh.currentState.show(
-                          notificationDragOffset:
-                              SliverPullToRefreshHeader.height);
-                    },
-                    icon: Icon(Icons.search),
-                  ),
-                ),
-                textAlign: TextAlign.left,
-                controller: _controller,
-                autofocus: true,
-                textInputAction: TextInputAction.search,
-                onSubmitted: (String name) {
-                  print('onSubmitted');
-                  submit();
-                },
-                keyboardType: TextInputType.text,
-                onEditingComplete: () {
-                  print('onEditingComplete');
-                  submit();
-                },
-              ),
-            ),
-          ),
           PullToRefreshContainer((info) => SliverPullToRefreshHeader(
                 info: info,
                 onTap: submit,

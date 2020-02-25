@@ -15,15 +15,12 @@ class BookState extends State<ActivityBook> {
   ScrollController _scrollController;
 
   bool _reverse = false;
-  bool isFavorite = false;
-  bool isLoading = true, isSuccess = false;
   Book book;
-  List<Chapter> chapters = [];
 
   @override
   void initState() {
     super.initState();
-    isFavorite = widget.book.isFavorite();
+    book = widget.book;
     SchedulerBinding.instance.addPostFrameCallback((_) {
       _refresh.currentState
           .show(notificationDragOffset: SliverPullToRefreshHeader.height);
@@ -38,47 +35,36 @@ class BookState extends State<ActivityBook> {
   }
 
   Future<bool> loadBook() async {
-    setState(() {
-      isLoading = true;
-      isSuccess = false;
-    });
-    try {
-      book = await UserAgentClient.instance
-          .getBook(aid: widget.book.aid)
-          .timeout(Duration(seconds: 5));
-      book.history = Data.getHistories()[book.aid]?.history;
-      chapters
-        ..clear()
-        ..addAll(book.chapters);
-      if (_reverse) chapters = chapters.reversed.toList();
-
-      /// 更新收藏列表里的漫画数据
-      if (isFavorite) Data.addFavorite(book);
-
-      _scrollToRead();
-      isLoading = false;
-      isSuccess = true;
-    } catch (e) {
-      isLoading = false;
-      isSuccess = false;
-      return false;
+    final cacheBook = await Book.loadBookCache(widget.book.aid);
+    if (cacheBook == null) {
+      print('没有缓存');
+      try {
+        await loadBookFromInternet();
+      } catch (e) {
+        return false;
+      }
+    } else {
+      print('有缓存');
+      book = cacheBook;
+      updateBook();
+      loadBookFromInternet().then((_) => updateBook());
     }
-    print('刷新 $book');
-    setState(() {});
     return true;
   }
 
-  void _scrollToRead() {
-    if (book.history != null) {
-      final history = book.chapters
-          .firstWhere((chapter) => chapter.cid == book.history.cid);
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        _scrollController.animateTo(
-            WidgetChapter.height * chapters.indexOf(history).toDouble(),
-            duration: Duration(milliseconds: 500),
-            curve: Curves.linear);
-      });
-    }
+  Future<dynamic> loadBookFromInternet() async {
+    final internetBook = await HttpHHMH39.instance
+        .getBook(widget.book.aid)
+        .timeout(Duration(seconds: 10));
+    book = internetBook;
+    if (book.isFavorite()) Data.addFavorite(book);
+    book.saveBookCache();
+    updateBook();
+  }
+
+  void updateBook() {
+    book.history = Data.getHistories()[book.aid]?.history;
+    if (mounted) setState(() {});
   }
 
   _openChapter(Chapter chapter) {
@@ -88,60 +74,100 @@ class BookState extends State<ActivityBook> {
     });
   }
 
-  favoriteBook() {
-    widget.book.favorite();
-    isFavorite = !isFavorite;
+  favoriteBook() async {
+    final fav = Provider.of<FavoriteData>(context, listen: false);
+    if (book.isFavorite()) {
+      final isFavoriteBook = Data._quickIdList().contains(book.aid);
+      if (isFavoriteBook) {
+        final sure = await showDialog<bool>(
+            context: context,
+            builder: (_) => AlertDialog(
+                  title: Text('确认取消收藏？'),
+                  content: Text('删除这本藏书后，首页的快速导航也会删除这本藏书'),
+                  actions: [
+                    FlatButton(
+                      child: Text('确认'),
+                      onPressed: () => Navigator.pop(context, true),
+                    ),
+                    FlatButton(
+                      child: Text('取消'),
+                      textColor: Colors.blue,
+                      onPressed: () => Navigator.pop(context, false),
+                    ),
+                  ],
+                ));
+        if (!sure) return;
+      }
+      fav.remove(book);
+    } else
+      fav.add(book);
     setState(() {});
   }
 
-  void _sort() {
-    setState(() {
-      _reverse = !_reverse;
-      chapters = chapters.reversed.toList();
-      _scrollToRead();
-    });
-  }
-
-  List<Widget> chapterWidgets() {
-    final book = this.book ?? widget.book;
-    List<Widget> list = [];
-    chapters.forEach((chapter) {
-      final isRead = chapter.cid == book.history?.cid;
-      list.add(WidgetChapter(
-        chapter: chapter,
-        onTap: _openChapter,
-        read: isRead,
-      ));
-    });
+  List<Chapter> _sort() {
+    final List<Chapter> list = List.from(book.chapters);
+    if (_reverse) return list.reversed.toList();
     return list;
   }
 
-  Widget buildChapter(BuildContext context, int index) {
-    final book = this.book ?? widget.book;
-    final chapter = chapters[index];
-    final isRead = chapter.cid == book.history?.cid;
-    if (index < chapters.length - 1) {
-      return DecoratedBox(
-        decoration: _Main._border,
-        child: WidgetChapter(
+  IndexedWidgetBuilder buildChapters(List<Chapter> chapters) {
+    IndexedWidgetBuilder builder = (BuildContext context, int index) {
+      final chapter = chapters[index];
+      Widget child;
+      if (chapter.avatar == null) {
+        child = ListTile(
+          leading: Text('[已看]', style: TextStyle(color: Colors.orange)),
+          title: Text(chapter.cname),
+          onTap: () {},
+        );
+      } else {
+        child = WidgetChapter(
           chapter: chapter,
           onTap: _openChapter,
-          read: isRead,
-        ),
-      );
-    }
-    return WidgetChapter(
-      chapter: chapter,
-      onTap: _openChapter,
-      read: isRead,
-    );
+          read: chapter.cid == book.history?.cid,
+        );
+      }
+      if (index < chapters.length - 1)
+        child = DecoratedBox(
+          decoration: _Main._border,
+          child: child,
+        );
+      return child;
+    };
+    return builder;
   }
 
   @override
   Widget build(BuildContext context) {
+    final isFavorite = book.isFavorite();
     Color color = isFavorite ? Colors.red : Colors.white;
     IconData icon = isFavorite ? Icons.favorite : Icons.favorite_border;
-    final book = this.book ?? widget.book;
+    final List<Chapter> chapters = _sort();
+    final history = <Widget>[];
+    if (book.history != null && book.chapters.length > 0) {
+      final chapter = book.chapters
+          .firstWhere((chapter) => chapter.cid == book.history.cid);
+      history.add(ListTile(title: Text('阅读历史')));
+      history.add(WidgetChapter(
+        chapter: chapter,
+        onTap: _openChapter,
+        read: true,
+      ));
+      history.add(ListTile(title: Text('下一章')));
+      final nextIndex = book.chapters.indexOf(chapter) + 1;
+      if (nextIndex < book.chapterCount) {
+        history.add(WidgetChapter(
+          chapter: book.chapters[nextIndex],
+          onTap: _openChapter,
+          read: false,
+        ));
+      } else {
+        history.add(ListTile(subtitle: Text('没有了')));
+      }
+      history.add(SizedBox(height: 20));
+    }
+    history.add(ListTile(title: Text('章节列表')));
+
     return Scaffold(
       body: PullToRefreshNotification(
         key: _refresh,
@@ -153,11 +179,16 @@ class BookState extends State<ActivityBook> {
             SliverAppBar(
               floating: true,
               pinned: true,
-              title: Text(widget.book.name),
+              title: Text(book.name),
               expandedHeight: 200,
               actions: <Widget>[
                 IconButton(
-                    onPressed: _sort,
+                    onPressed: () {
+                      setState(() {
+                        _reverse = !_reverse;
+                        setState(() {});
+                      });
+                    },
                     icon: Icon(_reverse
                         ? FontAwesomeIcons.sortNumericDown
                         : FontAwesomeIcons.sortNumericDownAlt)),
@@ -175,8 +206,12 @@ class BookState extends State<ActivityBook> {
                         height: 160,
                         child: Hero(
                           tag: widget.heroTag,
-                          child:
-                              Image(image: NetworkImageSSL(widget.book.avatar)),
+                          child: Image(
+                            image: ExtendedNetworkImageProvider(
+                              book.avatar,
+                              cache: true,
+                            ),
+                          ),
                         ),
                       ),
                       Expanded(
@@ -211,10 +246,16 @@ class BookState extends State<ActivityBook> {
                   onTap: () => _refresh.currentState.show(
                       notificationDragOffset: SliverPullToRefreshHeader.height),
                 )),
+            SliverToBoxAdapter(
+              child: Column(
+                children: history,
+                crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+            ),
             SliverList(
               delegate: SliverChildBuilderDelegate(
-                buildChapter,
-                childCount: book.chapters.length,
+                buildChapters(chapters),
+                childCount: chapters.length,
               ),
             ),
           ],

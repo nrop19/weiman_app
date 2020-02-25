@@ -1,5 +1,5 @@
 name: weiman
-description: 微漫
+description: 微漫App
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
@@ -11,7 +11,7 @@ description: 微漫
 # In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 1.0.4
+version: 1.0.8+2005
 
 environment:
   sdk: ">=2.3.0 <3.0.0"
@@ -20,26 +20,34 @@ dependencies:
   flutter:
     sdk: flutter
 
-  async: any
   cupertino_icons: any
+  async: any
   http: any
   encrypt: any
   html: any
   shared_preferences: any
-  fluttertoast: any
+  random_string: any
+  filesize: any
+  oktoast: any
+  path_provider: any
   draggable_container: any
+  sticky_headers: any
   flutter_sticky_header: any
   extended_nested_scroll_view: any
   dynamic_theme: any
   package_info: any
   url_launcher: any
   font_awesome_flutter: any
-  loading_more_list: any
+  loadmore: any
   pull_to_refresh_notification: any
+  http_client_helper: any
+  extended_image: any
+  screenshot: any
+  focus_widget: any
+  provider: any
 
   firebase_core: any
   firebase_analytics: any
-  e2e: any
 
 dev_dependencies:
   flutter_test:
@@ -58,7 +66,9 @@ flutter:
   uses-material-design: true
 
   assets:
-    - images/logo.png
+    - assets/logo.png
+    - assets/ca.crt
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #  - images/a_dot_burr.jpeg
